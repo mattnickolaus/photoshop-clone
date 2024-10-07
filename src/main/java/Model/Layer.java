@@ -16,7 +16,15 @@ public class Layer {
         return image;
     }
 
+    public void setImage(BufferedImage image) {
+        this.image = image;
+    }
+
     public void setOpacity(float opacity) {
         this.opacity = opacity;
+    }
+
+    public float getOpacity() {
+        return opacity;
     }
 }
