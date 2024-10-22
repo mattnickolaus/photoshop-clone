@@ -1,4 +1,4 @@
-package Model;
+package photoshopclone.Model;
 
 import org.apache.commons.imaging.ImageFormats;
 import org.apache.commons.imaging.ImageReadException;
