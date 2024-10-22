@@ -1,9 +1,11 @@
 
-package Model;
+package photoshopclone.Model;
 
 import org.apache.commons.imaging.ImageReadException;
 import org.apache.commons.imaging.ImageWriteException;
 import org.junit.jupiter.api.*;
+import photoshopclone.Model.Image;
+import photoshopclone.Model.Layer;
 
 import java.awt.image.BufferedImage;
 import java.io.File;

@@ -1,4 +1,4 @@
-package Model;
+package photoshopclone.Model;
 
 import java.awt.BasicStroke;
 import java.awt.Color;

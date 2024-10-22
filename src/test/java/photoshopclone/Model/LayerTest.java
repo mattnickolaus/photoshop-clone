@@ -1,6 +1,7 @@
-package Model;
+package photoshopclone.Model;
 
 import org.junit.jupiter.api.*;
+import photoshopclone.Model.Layer;
 
 import java.awt.*;
 import java.awt.image.BufferedImage;
