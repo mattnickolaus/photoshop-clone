@@ -8,12 +8,11 @@ import photoshopclone.Controller.ToolController;
 
 public class MainFrame extends JFrame {
     private Image imageModel;
-    private CanvasView canvasView;
     // Add view once built out
     private Layer currentLayer;
 
     public MainFrame() {
-        setTitle("Photoshop Clone");
+        setTitle("Photoshop Clone - IST 261 - Matt Nickolaus");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(800, 600);
 
