@@ -30,13 +30,24 @@ public class Image {
     public BufferedImage getCombinedImage() {
         if (layers.isEmpty()) return null;
 
-        BufferedImage combined = deepCopy(layers.get(0).getImage());
-        Graphics2D g = combined.createGraphics();
-        for (int i = 1; i < layers.size(); i++) {
-            g.drawImage(layers.get(i).getImage(), 0, 0, null);
+        // Start with the first visible layer as the base
+        BufferedImage base = null;
+        for (Layer layer : layers) {
+            if (layer.isVisible()) {
+                base = deepCopy(layer.getImage());
+                break;
+            }
+        }
+        if (base == null) return null; // No visible layers
+
+        Graphics2D g = base.createGraphics();
+        for (Layer layer : layers) {
+            if (layer.isVisible() && layer.getImage() != base) {
+                g.drawImage(layer.getImage(), 0, 0, null);
+            }
         }
         g.dispose();
-        return combined;
+        return base;
     }
 
     public void addLayer(Layer layer) {

@@ -29,7 +29,7 @@ public class ToolController {
     public ToolController(CanvasView canvasView, Layer currentLayer) {
         this.canvasView = canvasView;
         this.currentLayer = currentLayer;
-        this.brush = new Brush(10, Color.RED);
+        this.brush = new Brush(10, Color.BLACK);
         this.currentMode = ToolMode.BRUSH; // default
 
         MouseAdapter mouseAdapter = new MouseAdapter() {
@@ -91,6 +91,10 @@ public class ToolController {
 
     public void setToolMode(ToolMode mode) {
         this.currentMode = mode;
+    }
+
+    public void setCurrentLayer(Layer layer) {
+        this.currentLayer = layer;
     }
 
     // Convert screen coordinates to image coordinates (for brush)
