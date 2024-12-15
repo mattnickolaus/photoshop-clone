@@ -2,6 +2,7 @@ package photoshopclone.Model;
 
 import org.apache.commons.imaging.ImageReadException;
 import org.apache.commons.imaging.Imaging;
+
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
@@ -10,23 +11,36 @@ import java.util.LinkedList;
 import java.util.List;
 
 public class Image {
+    private BufferedImage loadedImage;
     private List<Layer> layers;
 
     public Image() {
         layers = new LinkedList<>();
     }
 
+    /**
+     * Loads the image from a file and stores it as loadedImage.
+     * Does not create any layers by default.
+     * You can clear existing layers after loading if desired.
+     */
     public void loadImage(File file) throws IOException, ImageReadException {
-        BufferedImage loaded = Imaging.getBufferedImage(file);
-        // Create a base layer from loaded image
-        Layer baseLayer = new Layer(loaded.getWidth(), loaded.getHeight());
-        Graphics2D g = baseLayer.getImage().createGraphics();
-        g.drawImage(loaded, 0, 0, null);
-        g.dispose();
-        layers.clear(); // Clear any existing layers
-        layers.add(baseLayer);
+        loadedImage = Imaging.getBufferedImage(file);
+        // Note: We do NOT create a base layer here.
+        // The caller (e.g., MainFrame) can decide how to use loadedImage
+        // and what layers to create.
     }
 
+    /**
+     * Returns the image that was last loaded.
+     */
+    public BufferedImage getLoadedImage() {
+        return loadedImage;
+    }
+
+    /**
+     * Combines all visible layers into a single image.
+     * If no visible layers exist, returns null.
+     */
     public BufferedImage getCombinedImage() {
         if (layers.isEmpty()) return null;
 
@@ -58,11 +72,19 @@ public class Image {
         return layers;
     }
 
+    public void clearLayers() {
+        layers.clear();
+    }
+
     /**
-     * Creates a deep copy of the current Image, including all layers.
+     * Creates a deep copy of this Image object, including all layers.
      */
     public Image copy() {
         Image copy = new Image();
+        // Copy loadedImage if needed
+        if (loadedImage != null) {
+            copy.loadedImage = deepCopy(loadedImage);
+        }
         for (Layer layer : this.layers) {
             copy.addLayer(layer.copy());
         }
@@ -70,6 +92,7 @@ public class Image {
     }
 
     private BufferedImage deepCopy(BufferedImage bi) {
+        if (bi == null) return null;
         BufferedImage copy = new BufferedImage(bi.getWidth(), bi.getHeight(), bi.getType());
         Graphics2D g = copy.createGraphics();
         g.drawImage(bi, 0, 0, null);

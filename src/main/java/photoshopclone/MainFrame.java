@@ -1,6 +1,7 @@
 package photoshopclone;
 
 import javax.swing.*;
+import javax.swing.border.TitledBorder;
 import org.apache.commons.imaging.ImageReadException;
 import photoshopclone.Model.Image;
 import photoshopclone.Model.Layer;
@@ -19,18 +20,19 @@ public class MainFrame extends JFrame {
     private Image imageModel;
     private CanvasView canvasView;
     private ToolController toolController;
-    private Layer drawingLayer;
+    private Layer imageLayer;
+    private Layer brushLayer;
 
     private JToggleButton brushToggle;
     private JToggleButton panToggle;
 
-    // Keep references to your split panes and panels as fields
-    private JPanel toolBarPanel;
-    private AdjustmentsPanel adjustmentsPanel;
-    private JPanel layersPlaceholder;
-    private JSplitPane adjustmentsLayersSplit;
-    private JSplitPane innerSplitPane;
+    // Split pane references
     private JSplitPane outerSplitPane;
+    private JSplitPane innerSplitPane;
+    private JSplitPane adjustmentsLayersSplit;
+
+    // Color indicator panel
+    private JPanel colorIndicatorPanel;
 
     public MainFrame() {
         setTitle("Photoshop Clone");
@@ -51,8 +53,11 @@ public class MainFrame extends JFrame {
         canvasView = new CanvasView(imageModel);
 
         // Create toolbar panel (on the left)
-        toolBarPanel = new JPanel();
+        JPanel toolBarPanel = new JPanel();
         toolBarPanel.setLayout(new BoxLayout(toolBarPanel, BoxLayout.Y_AXIS));
+        toolBarPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10)); // Add padding
+
+        // Add a vertical strut at the top for spacing
         toolBarPanel.add(Box.createVerticalStrut(20));
 
         // Brush toggle
@@ -102,42 +107,62 @@ public class MainFrame extends JFrame {
         toolBarPanel.add(resetViewButton);
         toolBarPanel.add(Box.createVerticalStrut(20));
 
-        // Add color palette below or above adjustments
+        // Add color indicator square
+        colorIndicatorPanel = new JPanel();
+        colorIndicatorPanel.setPreferredSize(new Dimension(30, 30));
+        colorIndicatorPanel.setMaximumSize(new Dimension(30, 30));
+        colorIndicatorPanel.setBackground(Color.BLACK); // Initial color
+        colorIndicatorPanel.setBorder(BorderFactory.createLineBorder(Color.BLACK));
+        colorIndicatorPanel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        toolBarPanel.add(colorIndicatorPanel);
+        toolBarPanel.add(Box.createVerticalStrut(10));
+
+        // Add color palette below the color indicator
         ColorPaletteView colorPaletteView = new ColorPaletteView(color -> {
             if (toolController != null) {
                 toolController.setBrushColor(color);
+                colorIndicatorPanel.setBackground(color);
             }
         });
-        toolBarPanel.add(colorPaletteView, BorderLayout.SOUTH);
+        toolBarPanel.add(colorPaletteView);
 
+        // Use a ButtonGroup for exclusive selection of tools
         ButtonGroup toolGroup = new ButtonGroup();
         toolGroup.add(brushToggle);
         toolGroup.add(panToggle);
 
-        // Create the adjustments panel (top) and a placeholder for layers (bottom)
+        // Create the adjustments panel (top) and layers panel (bottom)
         adjustmentsPanel = new AdjustmentsPanel();
-        layersPlaceholder = new JPanel();
-        layersPlaceholder.add(new JLabel("Load an image to see layers"));
+
+        // Initially, add a placeholder for layers
+        JPanel layersPlaceholder = new JPanel();
+        layersPlaceholder.setLayout(new BorderLayout());
+        layersPlaceholder.add(new JLabel("Load an image to see layers"), BorderLayout.CENTER);
 
         // Vertical split: adjustments on top, layers on bottom
         adjustmentsLayersSplit = new JSplitPane(JSplitPane.VERTICAL_SPLIT, adjustmentsPanel, layersPlaceholder);
-        adjustmentsLayersSplit.setDividerLocation(200);
+        adjustmentsLayersSplit.setDividerLocation(700); // Allocate more space to adjustments
+        adjustmentsLayersSplit.setOneTouchExpandable(true);
+        adjustmentsLayersSplit.setResizeWeight(0.7); // 70% to adjustments
 
         // innerSplitPane: canvas on left, adjustments+layers on right
         innerSplitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, canvasView, adjustmentsLayersSplit);
-        innerSplitPane.setDividerLocation(1400);
+        innerSplitPane.setDividerLocation(1400); // Adjust based on window size
         innerSplitPane.setOneTouchExpandable(true);
-        innerSplitPane.setResizeWeight(1.0);
+        innerSplitPane.setResizeWeight(1.0); // Canvas takes available space
 
-        // outerSplitPane: toolbar on left, main area on right
+        // outerSplitPane: toolbar on left, and innerSplitPane on right
         outerSplitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, toolBarPanel, innerSplitPane);
-        outerSplitPane.setDividerLocation(100);
+        outerSplitPane.setDividerLocation(100); // Narrow toolbar on the left
         outerSplitPane.setOneTouchExpandable(true);
+        outerSplitPane.setResizeWeight(0.0); // Toolbar maintains its size
 
         add(outerSplitPane);
 
         setVisible(true);
     }
+
+    private AdjustmentsPanel adjustmentsPanel;
 
     private void openImage() {
         JFileChooser chooser = new JFileChooser();
@@ -146,43 +171,59 @@ public class MainFrame extends JFrame {
             File selectedFile = chooser.getSelectedFile();
             try {
                 imageModel.loadImage(selectedFile);
-                BufferedImage combinedImage = imageModel.getCombinedImage();
+                BufferedImage loadedImage = imageModel.getLoadedImage(); // Do you mean getCombinedImage
 
-                if (combinedImage == null) {
-                    System.err.println("Failed to load or combine image.");
+                if (loadedImage == null) {
+                    System.err.println("Failed to load the image.");
                     return;
                 }
 
-                // Add a transparent drawing layer
-                drawingLayer = new Layer(combinedImage.getWidth(), combinedImage.getHeight());
-                Graphics2D g2d = drawingLayer.getImage().createGraphics();
-                g2d.setComposite(AlphaComposite.Clear);
-                g2d.fillRect(0, 0, combinedImage.getWidth(), combinedImage.getHeight());
-                g2d.dispose();
-                imageModel.addLayer(drawingLayer);
+                // Clear existing layers if any
+                imageModel.clearLayers();
 
-                // Test drawing on the drawing layer
-                Graphics2D testG = drawingLayer.getImage().createGraphics();
+                // Create "image" layer
+                imageLayer = new Layer(loadedImage.getWidth(), loadedImage.getHeight());
+                Graphics2D gImage = imageLayer.getImage().createGraphics();
+                gImage.drawImage(loadedImage, 0, 0, null);
+                gImage.dispose();
+                imageLayer.setName("image");
+                imageLayer.setVisible(true);
+                imageModel.addLayer(imageLayer);
+
+                // Create "brush" layer
+                brushLayer = new Layer(loadedImage.getWidth(), loadedImage.getHeight());
+                Graphics2D gBrush = brushLayer.getImage().createGraphics();
+                gBrush.setComposite(AlphaComposite.Clear);
+                gBrush.fillRect(0, 0, loadedImage.getWidth(), loadedImage.getHeight());
+                gBrush.dispose();
+                brushLayer.setName("brush");
+                brushLayer.setVisible(true);
+                imageModel.addLayer(brushLayer);
+
+                // Test drawing on the brush layer
+                Graphics2D testG = brushLayer.getImage().createGraphics();
                 testG.setColor(Color.RED);
                 testG.fillRect(10, 10, 50, 50);
                 testG.dispose();
 
-                canvasView.setPreferredSize(new Dimension(combinedImage.getWidth(), combinedImage.getHeight()));
+                // Update canvas view size
+                canvasView.setPreferredSize(new Dimension(loadedImage.getWidth(), loadedImage.getHeight()));
                 canvasView.revalidate();
                 canvasView.repaint();
 
                 // Recreate tool controller
-                toolController = new ToolController(canvasView, drawingLayer);
+                toolController = new ToolController(canvasView, brushLayer);
                 brushToggle.setEnabled(true);
                 panToggle.setEnabled(true);
                 brushToggle.setSelected(true);
-                toolController.setToolMode(ToolController.ToolMode.PAN);
+                toolController.setToolMode(ToolController.ToolMode.BRUSH);
 
-                // Now create the LayersPanel since we have toolController and layers
+                // Create the LayersPanel since we have toolController and layers
                 LayersPanel layersPanel = new LayersPanel(imageModel, toolController);
 
-                // Directly replace the placeholder with the actual layersPanel
+                // Replace the placeholder with the actual layersPanel
                 adjustmentsLayersSplit.setBottomComponent(layersPanel);
+                adjustmentsLayersSplit.setDividerLocation(700); // Reset divider if necessary
                 adjustmentsLayersSplit.revalidate();
                 adjustmentsLayersSplit.repaint();
 

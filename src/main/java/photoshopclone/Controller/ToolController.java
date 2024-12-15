@@ -12,10 +12,7 @@ public class ToolController {
     public enum ToolMode {
         BRUSH,
         PAN,
-        // ZOOM mode could be implemented differently - for simplicity,
-        // we can just have buttons that call canvasView.zoomIn() and canvasView.zoomOut()
-        // without a separate mode. But you can add it if you want:
-        ZOOM
+        // ZOOM could be handled separately via buttons
     }
 
     private Brush brush;
@@ -91,10 +88,12 @@ public class ToolController {
 
     public void setToolMode(ToolMode mode) {
         this.currentMode = mode;
+        System.out.println("Tool mode set to " + mode);
     }
 
     public void setCurrentLayer(Layer layer) {
         this.currentLayer = layer;
+        System.out.println("Current layer set to: " + layer.getName());
     }
 
     // Convert screen coordinates to image coordinates (for brush)
