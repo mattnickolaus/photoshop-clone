@@ -5,6 +5,7 @@ import javax.swing.border.TitledBorder;
 import org.apache.commons.imaging.ImageReadException;
 import photoshopclone.Model.Image;
 import photoshopclone.Model.Layer;
+import photoshopclone.Model.AdjustmentLayer; // Ensure you have this import
 import photoshopclone.View.CanvasView;
 import photoshopclone.View.ColorPaletteView;
 import photoshopclone.Controller.ToolController;
@@ -33,6 +34,9 @@ public class MainFrame extends JFrame {
 
     // Color indicator panel
     private JPanel colorIndicatorPanel;
+
+    // Adjustments Panel
+    private AdjustmentsPanel adjustmentsPanel;
 
     public MainFrame() {
         setTitle("Photoshop Clone");
@@ -132,12 +136,19 @@ public class MainFrame extends JFrame {
         toolGroup.add(panToggle);
 
         // Create the adjustments panel (top) and layers panel (bottom)
-        adjustmentsPanel = new AdjustmentsPanel();
+        // Pass lambdas to AdjustmentsPanel so it can get current layer and request repaint
+        adjustmentsPanel = new AdjustmentsPanel(
+                () -> (toolController != null) ? toolController.getCurrentLayer() : null,
+                () -> {
+                    // Repaint the canvas
+                    canvasView.repaint();
+                }
+        );
 
         // Initially, add a placeholder for layers
         JPanel layersPlaceholder = new JPanel();
-        layersPlaceholder.setLayout(new BorderLayout());
-        layersPlaceholder.add(new JLabel("Load an image to see layers"), BorderLayout.CENTER);
+        layersPlaceholder.setLayout(new GridLayout(0, 1));
+        layersPlaceholder.add(new JLabel("<html><h1>Load an image to begin.</h1><h3>'File > Open Image' then select a .png file</h3><p>(.jpg not supported)<p></html>"), SwingConstants.CENTER);
 
         // Vertical split: adjustments on top, layers on bottom
         adjustmentsLayersSplit = new JSplitPane(JSplitPane.VERTICAL_SPLIT, adjustmentsPanel, layersPlaceholder);
@@ -162,8 +173,6 @@ public class MainFrame extends JFrame {
         setVisible(true);
     }
 
-    private AdjustmentsPanel adjustmentsPanel;
-
     private void openImage() {
         JFileChooser chooser = new JFileChooser();
         int result = chooser.showOpenDialog(this);
@@ -171,7 +180,7 @@ public class MainFrame extends JFrame {
             File selectedFile = chooser.getSelectedFile();
             try {
                 imageModel.loadImage(selectedFile);
-                BufferedImage loadedImage = imageModel.getLoadedImage(); // Do you mean getCombinedImage
+                BufferedImage loadedImage = imageModel.getLoadedImage();
 
                 if (loadedImage == null) {
                     System.err.println("Failed to load the image.");
@@ -200,25 +209,25 @@ public class MainFrame extends JFrame {
                 brushLayer.setVisible(true);
                 imageModel.addLayer(brushLayer);
 
-                // Test drawing on the brush layer
-                Graphics2D testG = brushLayer.getImage().createGraphics();
-                testG.setColor(Color.RED);
-                testG.fillRect(10, 10, 50, 50);
-                testG.dispose();
+                // Add an AdjustmentLayer on top for demonstration
+                AdjustmentLayer adjustmentLayer = new AdjustmentLayer(loadedImage.getWidth(), loadedImage.getHeight());
+                adjustmentLayer.setName("Adjustment Layer");
+                adjustmentLayer.setVisible(true);
+                imageModel.addLayer(adjustmentLayer);
 
                 // Update canvas view size
                 canvasView.setPreferredSize(new Dimension(loadedImage.getWidth(), loadedImage.getHeight()));
                 canvasView.revalidate();
                 canvasView.repaint();
 
-                // Recreate tool controller
+                // Recreate tool controller with the brush layer initially
                 toolController = new ToolController(canvasView, brushLayer);
                 brushToggle.setEnabled(true);
                 panToggle.setEnabled(true);
                 brushToggle.setSelected(true);
                 toolController.setToolMode(ToolController.ToolMode.BRUSH);
 
-                // Create the LayersPanel since we have toolController and layers
+                // Create the LayersPanel now that we have toolController and layers
                 LayersPanel layersPanel = new LayersPanel(imageModel, toolController);
 
                 // Replace the placeholder with the actual layersPanel

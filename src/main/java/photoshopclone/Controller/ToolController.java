@@ -96,6 +96,10 @@ public class ToolController {
         System.out.println("Current layer set to: " + layer.getName());
     }
 
+    public Layer getCurrentLayer() {
+        return currentLayer;
+    }
+
     // Convert screen coordinates to image coordinates (for brush)
     // Since we scale and pan, we need to invert that transform:
     private int screenToImageX(int x) {

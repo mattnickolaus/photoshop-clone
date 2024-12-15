@@ -2,7 +2,13 @@ package photoshopclone.View;
 
 import javax.swing.*;
 import javax.swing.border.TitledBorder;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
 import java.awt.*;
+import java.util.function.Supplier;
+
+import photoshopclone.Model.AdjustmentLayer;
+import photoshopclone.Model.Layer;
 
 public class AdjustmentsPanel extends JPanel {
     private JSlider brightnessSlider;
@@ -13,7 +19,14 @@ public class AdjustmentsPanel extends JPanel {
     private JSlider tintSlider;
     private JSlider sharpnessSlider;
 
-    public AdjustmentsPanel() {
+    // We need a way to get the current layer. We can pass a supplier or callback.
+    private Supplier<Layer> currentLayerSupplier;
+    private Runnable repaintCallback;
+
+    public AdjustmentsPanel(Supplier<Layer> currentLayerSupplier, Runnable repaintCallback) {
+        this.currentLayerSupplier = currentLayerSupplier;
+        this.repaintCallback = repaintCallback;
+
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
         setBorder(BorderFactory.createTitledBorder(
                 BorderFactory.createEtchedBorder(),
@@ -24,7 +37,6 @@ public class AdjustmentsPanel extends JPanel {
 
         add(Box.createVerticalStrut(10)); // spacing at top
 
-        // Create and add each slider with a label
         brightnessSlider = createLabeledSlider("Brightness", -100, 100, 0);
         contrastSlider = createLabeledSlider("Contrast", -100, 100, 0);
         saturationSlider = createLabeledSlider("Saturation", -100, 100, 0);
@@ -33,15 +45,13 @@ public class AdjustmentsPanel extends JPanel {
         tintSlider = createLabeledSlider("Tint", -100, 100, 0);
         sharpnessSlider = createLabeledSlider("Sharpness", 0, 100, 50);
 
+        addSliderListeners();
+
         add(Box.createVerticalGlue()); // push sliders up
     }
 
-    /**
-     * Helper method to create a label and a slider pair and add them to the panel.
-     */
     private JSlider createLabeledSlider(String labelText, int min, int max, int value) {
-        JPanel panel = new JPanel();
-        panel.setLayout(new BorderLayout());
+        JPanel panel = new JPanel(new BorderLayout());
         panel.setBorder(BorderFactory.createEmptyBorder(5,5,5,5));
 
         JLabel label = new JLabel(labelText + ":");
@@ -56,5 +66,33 @@ public class AdjustmentsPanel extends JPanel {
 
         add(panel);
         return slider;
+    }
+
+    private void addSliderListeners() {
+        ChangeListener listener = new ChangeListener() {
+            @Override
+            public void stateChanged(ChangeEvent e) {
+                Layer current = currentLayerSupplier.get();
+                if (current instanceof AdjustmentLayer) {
+                    AdjustmentLayer adj = (AdjustmentLayer) currentLayerSupplier.get();
+                    adj.setBrightness(brightnessSlider.getValue());
+                    adj.setContrast(contrastSlider.getValue());
+                    adj.setSaturation(saturationSlider.getValue());
+                    adj.setVibrance(vibranceSlider.getValue());
+                    adj.setWarmth(warmthSlider.getValue());
+                    adj.setTint(tintSlider.getValue());
+                    adj.setSharpness(sharpnessSlider.getValue());
+                    repaintCallback.run();
+                }
+            }
+        };
+
+        brightnessSlider.addChangeListener(listener);
+        contrastSlider.addChangeListener(listener);
+        saturationSlider.addChangeListener(listener);
+        vibranceSlider.addChangeListener(listener);
+        warmthSlider.addChangeListener(listener);
+        tintSlider.addChangeListener(listener);
+        sharpnessSlider.addChangeListener(listener);
     }
 }

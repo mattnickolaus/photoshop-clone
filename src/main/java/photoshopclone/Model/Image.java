@@ -44,23 +44,33 @@ public class Image {
     public BufferedImage getCombinedImage() {
         if (layers.isEmpty()) return null;
 
-        // Start with the first visible layer as the base
+        // Start with the first visible non-adjustment layer as the base
         BufferedImage base = null;
         for (Layer layer : layers) {
-            if (layer.isVisible()) {
+            if (layer.isVisible() && !(layer instanceof AdjustmentLayer)) {
                 base = deepCopy(layer.getImage());
                 break;
             }
         }
-        if (base == null) return null; // No visible layers
+        if (base == null) return null; // No visible normal layers
 
+        // Apply all visible normal layers on top
         Graphics2D g = base.createGraphics();
         for (Layer layer : layers) {
-            if (layer.isVisible() && layer.getImage() != base) {
+            if (layer.isVisible() && !(layer instanceof AdjustmentLayer) && layer.getImage() != base) {
                 g.drawImage(layer.getImage(), 0, 0, null);
             }
         }
         g.dispose();
+
+        // Now apply all adjustment layers in order
+        for (Layer layer : layers) {
+            if (layer.isVisible() && layer instanceof AdjustmentLayer) {
+                AdjustmentLayer adj = (AdjustmentLayer) layer;
+                base = adj.applyAdjustments(base);
+            }
+        }
+
         return base;
     }
 

@@ -9,6 +9,7 @@ import javax.swing.border.TitledBorder;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 import java.awt.*;
+import java.awt.image.BufferedImage;
 
 public class LayersPanel extends JPanel {
     private Image imageModel;
@@ -81,17 +82,30 @@ public class LayersPanel extends JPanel {
     }
 
     private void addLayer() {
-        // Create a new transparent layer
         if (imageModel.getLayers().isEmpty()) return;
-        Layer base = imageModel.getLayers().get(0); // Assuming first layer is bottom
-        Layer newLayer = new Layer(base.getImage().getWidth(), base.getImage().getHeight());
+
+        // Use ARGB so we can have transparency and draw brush strokes properly
+        Layer base = imageModel.getLayers().get(0);
+        Layer newLayer = new Layer(base.getImage().getWidth(), base.getImage().getHeight(), BufferedImage.TYPE_INT_ARGB);
+
+        // Initialize as transparent
+        Graphics2D g2 = newLayer.getImage().createGraphics();
+        g2.setComposite(AlphaComposite.Clear);
+        g2.fillRect(0, 0, newLayer.getImage().getWidth(), newLayer.getImage().getHeight());
+        g2.dispose();
+
         newLayer.setName("Layer " + (layerListModel.getSize() + 1));
         newLayer.setVisible(true);
         imageModel.addLayer(newLayer);
-        layerListModel.add(0, newLayer); // Add to the top of the list
-        layerList.setSelectedIndex(0);
+
+        // Insert at the top (index 0) if we are treating top layers as first in the list
+        layerListModel.add(0, newLayer);
+
+        // Select the new layer so the user can start drawing immediately
+        layerList.setSelectedValue(newLayer, true);
         repaintCanvas();
     }
+
 
     private void deleteLayer() {
         Layer selected = layerList.getSelectedValue();
