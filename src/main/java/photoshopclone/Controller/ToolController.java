@@ -24,6 +24,7 @@ public class ToolController {
     private int lastX, lastY;
 
     public ToolController(CanvasView canvasView, Layer currentLayer) {
+        System.out.println("Toolcontroller created: " + this.hashCode());
         this.canvasView = canvasView;
         this.currentLayer = currentLayer;
         this.brush = new Brush(10, Color.BLACK);
@@ -37,6 +38,9 @@ public class ToolController {
                 if (currentMode == ToolMode.BRUSH) {
                     int x = e.getX();
                     int y = e.getY();
+                    System.out.println("ToolController at mouse pressed: " + ToolController.this.hashCode());
+                    System.out.println("Mouse pressed (draw) - canvasView: " + canvasView.hashCode());
+                    System.out.println("Mouse pressed (draw) - current layer: " + currentLayer + " hash: " + currentLayer.hashCode());
                     brush.draw(currentLayer, screenToImageX(x), screenToImageY(y), screenToImageX(x), screenToImageY(y));
                     canvasView.repaint();
                     dragging = true;
@@ -79,6 +83,7 @@ public class ToolController {
         };
 
         canvasView.addMouseListener(mouseAdapter);
+        System.out.println("MouseAdapter added by ToolController" + ToolController.this.hashCode());
         canvasView.addMouseMotionListener(mouseAdapter);
     }
 
@@ -93,7 +98,8 @@ public class ToolController {
 
     public void setCurrentLayer(Layer layer) {
         this.currentLayer = layer;
-        System.out.println("Current layer set to: " + layer.getName());
+        System.out.println("toolController = " + this.hashCode());
+        System.out.println("Current layer set to: " + layer.getName() + " hash:" + layer.hashCode());
     }
 
     public Layer getCurrentLayer() {

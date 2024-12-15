@@ -54,16 +54,21 @@ public class Image {
         }
         if (base == null) return null; // No visible normal layers
 
-        // Apply all visible normal layers on top
+        // Draw all other visible normal layers on top
         Graphics2D g = base.createGraphics();
+        boolean foundBase = false;
         for (Layer layer : layers) {
-            if (layer.isVisible() && !(layer instanceof AdjustmentLayer) && layer.getImage() != base) {
+            if (layer.isVisible() && !(layer instanceof AdjustmentLayer)) {
+                if (!foundBase) {
+                    foundBase = true; // The first visible normal layer is already the base
+                    continue;
+                }
                 g.drawImage(layer.getImage(), 0, 0, null);
             }
         }
         g.dispose();
 
-        // Now apply all adjustment layers in order
+        // Apply adjustment layers in order
         for (Layer layer : layers) {
             if (layer.isVisible() && layer instanceof AdjustmentLayer) {
                 AdjustmentLayer adj = (AdjustmentLayer) layer;

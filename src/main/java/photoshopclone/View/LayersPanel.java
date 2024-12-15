@@ -32,9 +32,8 @@ public class LayersPanel extends JPanel {
 
         layerListModel = new DefaultListModel<>();
 
-        // Iterate through layers in reverse order to display top layers first
-        for (int i = imageModel.getLayers().size() - 1; i >= 0; i--) {
-            layerListModel.addElement(imageModel.getLayers().get(i));
+        for (Layer layer : imageModel.getLayers()) {
+            layerListModel.addElement(layer);
         }
 
         layerList = new JList<>(layerListModel);
@@ -48,6 +47,8 @@ public class LayersPanel extends JPanel {
                     Layer selected = layerList.getSelectedValue();
                     if (selected != null && toolController != null) {
                         toolController.setCurrentLayer(selected);
+                        System.out.println("toolController = " + toolController.hashCode());
+                        System.out.println("Layer selected: " + selected);
                     }
                 }
             }
@@ -84,25 +85,25 @@ public class LayersPanel extends JPanel {
     private void addLayer() {
         if (imageModel.getLayers().isEmpty()) return;
 
-        // Use ARGB so we can have transparency and draw brush strokes properly
-        Layer base = imageModel.getLayers().get(0);
-        Layer newLayer = new Layer(base.getImage().getWidth(), base.getImage().getHeight(), BufferedImage.TYPE_INT_ARGB);
+        Layer bottomLayer = imageModel.getLayers().get(0);
+        Layer newLayer = new Layer(bottomLayer.getImage().getWidth(), bottomLayer.getImage().getHeight(), BufferedImage.TYPE_INT_ARGB);
 
-        // Initialize as transparent
+        // Initialize transparent
         Graphics2D g2 = newLayer.getImage().createGraphics();
         g2.setComposite(AlphaComposite.Clear);
         g2.fillRect(0, 0, newLayer.getImage().getWidth(), newLayer.getImage().getHeight());
         g2.dispose();
 
-        newLayer.setName("Layer " + (layerListModel.getSize() + 1));
+        newLayer.setName("Layer " + (layerListModel.size() + 1));
         newLayer.setVisible(true);
+
+        // Add at the end of imageModel and layerListModel
         imageModel.addLayer(newLayer);
+        layerListModel.addElement(newLayer);
+        System.out.println("Layer added: " + newLayer.getName() + " hash: " + newLayer.hashCode());
 
-        // Insert at the top (index 0) if we are treating top layers as first in the list
-        layerListModel.add(0, newLayer);
-
-        // Select the new layer so the user can start drawing immediately
-        layerList.setSelectedValue(newLayer, true);
+        // Select the new top layer (last one)
+        layerList.setSelectedIndex(layerListModel.size() - 1);
         repaintCanvas();
     }
 

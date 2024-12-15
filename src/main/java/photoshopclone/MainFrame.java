@@ -154,7 +154,7 @@ public class MainFrame extends JFrame {
         adjustmentsLayersSplit = new JSplitPane(JSplitPane.VERTICAL_SPLIT, adjustmentsPanel, layersPlaceholder);
         adjustmentsLayersSplit.setDividerLocation(700); // Allocate more space to adjustments
         adjustmentsLayersSplit.setOneTouchExpandable(true);
-        adjustmentsLayersSplit.setResizeWeight(0.7); // 70% to adjustments
+        adjustmentsLayersSplit.setResizeWeight(0.8); // 70% to adjustments
 
         // innerSplitPane: canvas on left, adjustments+layers on right
         innerSplitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, canvasView, adjustmentsLayersSplit);
@@ -164,7 +164,7 @@ public class MainFrame extends JFrame {
 
         // outerSplitPane: toolbar on left, and innerSplitPane on right
         outerSplitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, toolBarPanel, innerSplitPane);
-        outerSplitPane.setDividerLocation(100); // Narrow toolbar on the left
+        outerSplitPane.setDividerLocation(120); // Narrow toolbar on the left
         outerSplitPane.setOneTouchExpandable(true);
         outerSplitPane.setResizeWeight(0.0); // Toolbar maintains its size
 
@@ -219,9 +219,11 @@ public class MainFrame extends JFrame {
                 canvasView.setPreferredSize(new Dimension(loadedImage.getWidth(), loadedImage.getHeight()));
                 canvasView.revalidate();
                 canvasView.repaint();
+                System.out.println("Canvas View in openImage: " + canvasView.hashCode());
 
                 // Recreate tool controller with the brush layer initially
                 toolController = new ToolController(canvasView, brushLayer);
+                System.out.println("Toolcontroller created: " + toolController.hashCode());
                 brushToggle.setEnabled(true);
                 panToggle.setEnabled(true);
                 brushToggle.setSelected(true);
