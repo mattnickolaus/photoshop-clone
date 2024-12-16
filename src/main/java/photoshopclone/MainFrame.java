@@ -1,7 +1,6 @@
 package photoshopclone;
 
 import javax.swing.*;
-import javax.swing.border.TitledBorder;
 import org.apache.commons.imaging.ImageReadException;
 import photoshopclone.Model.Image;
 import photoshopclone.Model.Layer;
@@ -9,6 +8,7 @@ import photoshopclone.Model.AdjustmentLayer; // Ensure you have this import
 import photoshopclone.View.CanvasView;
 import photoshopclone.View.ColorPaletteView;
 import photoshopclone.Controller.ToolController;
+import photoshopclone.Controller.UndoManager;
 import photoshopclone.View.LayersPanel;
 import photoshopclone.View.AdjustmentsPanel;
 
@@ -16,7 +16,7 @@ import java.awt.*;
 import java.io.*;
 import java.awt.image.BufferedImage;
 
-public class MainFrame extends JFrame {
+public class MainFrame extends JFrame implements UndoManager.UndoRedoListener {
     private Image imageModel;
     private CanvasView canvasView;
     private ToolController toolController;
@@ -36,6 +36,13 @@ public class MainFrame extends JFrame {
 
     // Adjustments Panel
     private AdjustmentsPanel adjustmentsPanel;
+
+    // Undo and Redo buttons
+    private JButton undoButton;
+    private JButton redoButton;
+
+    // UndoManager
+    private UndoManager undoManager;
 
     public MainFrame() {
         setTitle("Photoshop Clone");
@@ -72,6 +79,10 @@ public class MainFrame extends JFrame {
         // Initialize model and canvas
         imageModel = new Image();
         canvasView = new CanvasView(imageModel);
+
+        // Initialize UndoManager
+        undoManager = new UndoManager(imageModel);
+        undoManager.setUndoRedoListener(this);
 
         // Create toolbar panel (on the left)
         JPanel toolBarPanel = new JPanel();
@@ -147,6 +158,28 @@ public class MainFrame extends JFrame {
         });
         toolBarPanel.add(colorPaletteView);
 
+        // Add Undo button
+        undoButton = new JButton("Undo");
+        undoButton.setEnabled(false); // Initially disabled
+        undoButton.addActionListener(e -> {
+            undoManager.undo();
+            updateImageFromUndoManager();
+        });
+        undoButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+        toolBarPanel.add(undoButton);
+        toolBarPanel.add(Box.createVerticalStrut(5));
+
+        // Add Redo button
+        redoButton = new JButton("Redo");
+        redoButton.setEnabled(false); // Initially disabled
+        redoButton.addActionListener(e -> {
+            undoManager.redo();
+            updateImageFromUndoManager();
+        });
+        redoButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+        toolBarPanel.add(redoButton);
+        toolBarPanel.add(Box.createVerticalStrut(10));
+
         // Use a ButtonGroup for exclusive selection of tools
         ButtonGroup toolGroup = new ButtonGroup();
         toolGroup.add(brushToggle);
@@ -158,9 +191,7 @@ public class MainFrame extends JFrame {
                 () -> (toolController != null) ? toolController.getCurrentLayer() : null,
                 () -> {
                     // Repaint the canvas
-                    System.out.println("Canvas View at Adjustments: " + canvasView.hashCode());
                     canvasView.repaint();
-                    System.out.println("Canvas View at Adjustments: " + canvasView.hashCode());
                 }
         );
 
@@ -250,8 +281,8 @@ public class MainFrame extends JFrame {
                 canvasView.repaint();
                 System.out.println("Canvas View in openImage: " + canvasView.hashCode());
 
-                // Recreate tool controller with the brush layer initially
-                toolController = new ToolController(canvasView, brushLayer);
+                // Recreate ToolController with the brush layer initially
+                toolController = new ToolController(canvasView, brushLayer, undoManager);
                 System.out.println("Toolcontroller created: " + toolController.hashCode());
                 brushToggle.setEnabled(true);
                 panToggle.setEnabled(true);
@@ -259,7 +290,7 @@ public class MainFrame extends JFrame {
                 toolController.setToolMode(ToolController.ToolMode.BRUSH);
 
                 // Create the LayersPanel now that we have toolController and layers
-                LayersPanel layersPanel = new LayersPanel(imageModel, toolController);
+                LayersPanel layersPanel = new LayersPanel(imageModel, toolController, undoManager);
 
                 // Replace the placeholder with the actual layersPanel
                 adjustmentsLayersSplit.setBottomComponent(layersPanel);
@@ -270,6 +301,24 @@ public class MainFrame extends JFrame {
                 revalidate();
                 repaint();
 
+                // Programmatically select the "brush" layer in LayersPanel to trigger the selection listener
+                layersPanel.setSelectedLayerByName("brush");
+
+                // Save initial state after loading
+                undoManager = new UndoManager(imageModel);
+                undoManager.setUndoRedoListener(this);
+                toolController.setUndoManager(undoManager); // Ensure ToolController has a setter
+                layersPanel = new LayersPanel(imageModel, toolController, undoManager);
+                adjustmentsLayersSplit.setBottomComponent(layersPanel);
+                adjustmentsLayersSplit.setDividerLocation(700); // Reset divider if necessary
+                adjustmentsLayersSplit.revalidate();
+                adjustmentsLayersSplit.repaint();
+
+                // Update Undo/Redo buttons
+                undoButton.setEnabled(undoManager.canUndo());
+                redoButton.setEnabled(undoManager.canRedo());
+
+                JOptionPane.showMessageDialog(this, "Project loaded successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
             } catch (IOException | ImageReadException ex) {
                 ex.printStackTrace();
                 JOptionPane.showMessageDialog(this, "An error occurred while loading the image.", "Error", JOptionPane.ERROR_MESSAGE);
@@ -396,7 +445,7 @@ public class MainFrame extends JFrame {
                     // If ToolController is null, create a new one with the "brush" layer
                     Layer brushLayer = findLayerByName("brush");
                     if (brushLayer != null) {
-                        toolController = new ToolController(canvasView, brushLayer);
+                        toolController = new ToolController(canvasView, brushLayer, undoManager);
                         System.out.println("ToolController created with brush layer: " + brushLayer.getName() + ", Hash: " + brushLayer.hashCode());
                         brushToggle.setEnabled(true);
                         panToggle.setEnabled(true);
@@ -406,7 +455,7 @@ public class MainFrame extends JFrame {
                 }
 
                 // Recreate LayersPanel
-                LayersPanel layersPanel = new LayersPanel(imageModel, toolController);
+                LayersPanel layersPanel = new LayersPanel(imageModel, toolController, undoManager);
                 adjustmentsLayersSplit.setBottomComponent(layersPanel);
                 adjustmentsLayersSplit.setDividerLocation(700); // Reset divider if necessary
                 adjustmentsLayersSplit.revalidate();
@@ -417,6 +466,20 @@ public class MainFrame extends JFrame {
 
                 // Programmatically select the "brush" layer in LayersPanel to trigger the selection listener
                 layersPanel.setSelectedLayerByName("brush");
+
+                // Reset UndoManager with the new state
+                undoManager = new UndoManager(imageModel);
+                undoManager.setUndoRedoListener(this);
+                toolController.setUndoManager(undoManager); // Ensure ToolController has a setter
+                layersPanel = new LayersPanel(imageModel, toolController, undoManager);
+                adjustmentsLayersSplit.setBottomComponent(layersPanel);
+                adjustmentsLayersSplit.setDividerLocation(700); // Reset divider if necessary
+                adjustmentsLayersSplit.revalidate();
+                adjustmentsLayersSplit.repaint();
+
+                // Update Undo/Redo buttons
+                undoButton.setEnabled(undoManager.canUndo());
+                redoButton.setEnabled(undoManager.canRedo());
 
                 // Debugging Output
                 Layer currentLayer = toolController.getCurrentLayer();
@@ -440,6 +503,43 @@ public class MainFrame extends JFrame {
             }
         }
         return null;
+    }
+
+    // Implement UndoRedoListener method
+    @Override
+    public void onUndoRedoStackChanged() {
+        undoButton.setEnabled(undoManager.canUndo());
+        redoButton.setEnabled(undoManager.canRedo());
+        System.out.println("UndoRedoStackChanged - Can Undo: " + undoManager.canUndo() + ", Can Redo: " + undoManager.canRedo());
+    }
+
+    private void updateImageFromUndoManager() {
+        Image currentImage = undoManager.getCurrentImage();
+        imageModel.setState(currentImage);
+
+        // Update canvas view
+        canvasView.setImageModel(imageModel);
+        if (imageModel.getLoadedImage() != null) {
+            canvasView.setPreferredSize(new Dimension(imageModel.getLoadedImage().getWidth(), imageModel.getLoadedImage().getHeight()));
+        }
+        canvasView.revalidate();
+        canvasView.repaint();
+
+        // Recreate LayersPanel
+        LayersPanel layersPanel = new LayersPanel(imageModel, toolController, undoManager);
+        adjustmentsLayersSplit.setBottomComponent(layersPanel);
+        adjustmentsLayersSplit.setDividerLocation(700); // Reset divider if necessary
+        adjustmentsLayersSplit.revalidate();
+        adjustmentsLayersSplit.repaint();
+
+        // Re-select the current layer in LayersPanel to trigger the selection listener
+        layersPanel.setSelectedLayerByName(toolController.getCurrentLayer().getName());
+
+        // Update Undo/Redo buttons
+        undoButton.setEnabled(undoManager.canUndo());
+        redoButton.setEnabled(undoManager.canRedo());
+
+        System.out.println("updateImageFromUndoManager - Can Undo: " + undoManager.canUndo() + ", Can Redo: " + undoManager.canRedo());
     }
 
     private void saveOnExit() {

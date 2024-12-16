@@ -1,5 +1,6 @@
 package photoshopclone.View;
 
+import photoshopclone.Controller.UndoManager;
 import photoshopclone.Model.Image;
 import photoshopclone.Model.Layer;
 import photoshopclone.Controller.ToolController;
@@ -16,10 +17,12 @@ public class LayersPanel extends JPanel {
     private ToolController toolController;
     private DefaultListModel<Layer> layerListModel;
     private JList<Layer> layerList;
+    private UndoManager undoManager;
 
-    public LayersPanel(Image imageModel, ToolController toolController) {
+    public LayersPanel(Image imageModel, ToolController toolController, UndoManager undoManager) {
         this.imageModel = imageModel;
         this.toolController = toolController;
+        this.undoManager = undoManager;
         setLayout(new BorderLayout());
 
         // Add a titled border with the word "Layers"
@@ -38,18 +41,15 @@ public class LayersPanel extends JPanel {
 
         layerList = new JList<>(layerListModel);
         layerList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        layerList.setCellRenderer(new LayerCellRenderer());
 
-        layerList.addListSelectionListener(new ListSelectionListener() {
-            @Override
-            public void valueChanged(ListSelectionEvent e) {
-                if (!e.getValueIsAdjusting()) {
-                    Layer selected = layerList.getSelectedValue();
-                    if (selected != null && toolController != null) {
-                        toolController.setCurrentLayer(selected);
-                        System.out.println("toolController = " + toolController.hashCode());
-                        System.out.println("Layer selected: " + selected);
-                    }
+        layerList.addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting()) {
+                Layer selected = layerList.getSelectedValue();
+                if (selected != null) {
+                    toolController.setCurrentLayer(selected);
+                    System.out.println("Layer selected: " + selected);
+                    System.out.println("toolController = " + toolController.hashCode());
+                    System.out.println("Current layer set to: " + selected.getName());
                 }
             }
         });
@@ -82,31 +82,33 @@ public class LayersPanel extends JPanel {
         }
     }
 
-    private void addLayer() {
-        if (imageModel.getLayers().isEmpty()) return;
+    public void addLayer() {
+        // Generate a unique layer name
+        int count = layerListModel.getSize() + 1;
+        String baseName = "Layer " + count;
+        String uniqueName = baseName;
+        boolean nameExists = true;
+        while (nameExists) {
+            nameExists = false;
+            for (int i = 0; i < layerListModel.getSize(); i++) {
+                if (layerListModel.get(i).getName().equalsIgnoreCase(uniqueName)) {
+                    nameExists = true;
+                    uniqueName = baseName + " (" + count + ")";
+                    count++;
+                    break;
+                }
+            }
+        }
 
-        // Use ARGB so we can have transparency and draw brush strokes properly
-        Layer base = imageModel.getLayers().get(0);
-        Layer newLayer = new Layer(base.getImage().getWidth(), base.getImage().getHeight(), BufferedImage.TYPE_INT_ARGB);
-
-        // Initialize as transparent
-        Graphics2D g2 = newLayer.getImage().createGraphics();
-        g2.setComposite(AlphaComposite.Clear);
-        g2.fillRect(0, 0, newLayer.getImage().getWidth(), newLayer.getImage().getHeight());
-        g2.dispose();
-
-        // Generate a unique name
-        int layerNumber = layerListModel.getSize() + 1;
-        String uniqueName = "Layer " + layerNumber;
+        // Create and add the new layer
+        Layer newLayer = new Layer(toolController.getCurrentLayer().getImage().getWidth(),
+                toolController.getCurrentLayer().getImage().getHeight());
         newLayer.setName(uniqueName);
         newLayer.setVisible(true);
-        imageModel.addLayer(newLayer);
-
-        // Insert at the end of imageModel and layerListModel
+        imageModel.addLayer(newLayer); // This is throwing an error
         layerListModel.addElement(newLayer);
-        System.out.println("Added new layer: " + newLayer.getName() + ", Hash: " + newLayer.hashCode());
 
-        // Select the new top layer (last one)
+        // Select the new layer
         layerList.setSelectedIndex(layerListModel.size() - 1);
         repaintCanvas();
     }

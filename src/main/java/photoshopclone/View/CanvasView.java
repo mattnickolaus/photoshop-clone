@@ -20,15 +20,12 @@ public class CanvasView extends JPanel {
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
-        BufferedImage displayImage = imageModel.getCombinedImage();
-        if (displayImage == null) return;
-
-        Graphics2D g2d = (Graphics2D) g.create();
-        // Apply scale and translation
-        g2d.translate(offsetX, offsetY);
-        g2d.scale(scaleFactor, scaleFactor);
-        g2d.drawImage(displayImage, 0, 0, this);
-        g2d.dispose();
+        BufferedImage combinedImage = imageModel.getCombinedImage();
+        if (combinedImage != null) {
+            g.drawImage(combinedImage, (int) offsetX, (int) offsetY,
+                    (int) (combinedImage.getWidth() * scaleFactor),
+                    (int) (combinedImage.getHeight() * scaleFactor), null);
+        }
     }
 
     public void zoomIn() {
@@ -71,5 +68,9 @@ public class CanvasView extends JPanel {
 
     public void setImageModel(Image imageModel) {
         this.imageModel = imageModel;
+    }
+
+    public Image getImageModel() {
+        return imageModel;
     }
 }

@@ -98,6 +98,16 @@ public class Image implements Serializable {
         return copy;
     }
 
+    // Method to set the state from another Image instance
+    public void setState(Image other) {
+        this.loadedImage = other.getLoadedImage() != null ? deepCopy(other.getLoadedImage()) : null;
+        this.layers = new LinkedList<>();
+        for (Layer layer : other.getLayers()) {
+            this.layers.add(layer.copy());
+        }
+    }
+
+
     // Custom serialization for loadedImage
     private void writeObject(ObjectOutputStream oos) throws IOException {
         oos.defaultWriteObject();

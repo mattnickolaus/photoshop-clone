@@ -65,14 +65,21 @@ public class Layer implements Serializable {
     }
 
     public Layer copy() {
-        Layer copyLayer = new Layer(image.getWidth(), image.getHeight(), image.getType());
-        Graphics2D g = copyLayer.getImage().createGraphics();
-        g.drawImage(this.image, 0, 0, null);
+        Layer newLayer = new Layer(this.image.getWidth(), this.image.getHeight(), this.image.getType());
+        newLayer.setName(this.name); // Retain the original name
+        newLayer.setVisible(this.visible);
+        newLayer.setImage(deepCopy(this.image));
+        return newLayer;
+    }
+
+    // Deep copy method for BufferedImage
+    private BufferedImage deepCopy(BufferedImage bi) {
+        if (bi == null) return null;
+        BufferedImage copy = new BufferedImage(bi.getWidth(), bi.getHeight(), bi.getType());
+        Graphics2D g = copy.createGraphics();
+        g.drawImage(bi, 0, 0, null);
         g.dispose();
-        copyLayer.setOpacity(this.opacity);
-        copyLayer.setName(this.name + " Copy");
-        copyLayer.setVisible(this.visible);
-        return copyLayer;
+        return copy;
     }
 
     // Custom serialization for BufferedImage
