@@ -107,5 +107,4 @@ public class AdjustmentLayer extends Layer implements Serializable {
 
         return result;
     }
-    // No need for additional serialization as Layer handles it
 }

@@ -164,4 +164,16 @@ public class LayersPanel extends JPanel {
             return this;
         }
     }
+
+    // Method to programmatically select a layer by name
+    public void setSelectedLayerByName(String layerName) {
+        for (int i = 0; i < layerListModel.getSize(); i++) {
+            Layer layer = layerListModel.get(i);
+            if (layer.getName().equalsIgnoreCase(layerName)) {
+                layerList.setSelectedIndex(i);
+                break;
+            }
+        }
+    }
+
 }

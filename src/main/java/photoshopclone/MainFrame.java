@@ -158,7 +158,9 @@ public class MainFrame extends JFrame {
                 () -> (toolController != null) ? toolController.getCurrentLayer() : null,
                 () -> {
                     // Repaint the canvas
+                    System.out.println("Canvas View at Adjustments: " + canvasView.hashCode());
                     canvasView.repaint();
+                    System.out.println("Canvas View at Adjustments: " + canvasView.hashCode());
                 }
         );
 
@@ -337,6 +339,18 @@ public class MainFrame extends JFrame {
                 fileToSave = new File(path + ".ser");
             }
 
+            // Check if file exists and confirm overwrite
+            if (fileToSave.exists()) {
+                int overwrite = JOptionPane.showConfirmDialog(this,
+                        "File already exists. Do you want to overwrite it?",
+                        "Confirm Overwrite",
+                        JOptionPane.YES_NO_OPTION,
+                        JOptionPane.WARNING_MESSAGE);
+                if (overwrite != JOptionPane.YES_OPTION) {
+                    return; // User chose not to overwrite
+                }
+            }
+
             try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(fileToSave))) {
                 oos.writeObject(imageModel);
                 JOptionPane.showMessageDialog(this, "Project saved successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
@@ -370,17 +384,20 @@ public class MainFrame extends JFrame {
                 canvasView.repaint();
                 System.out.println("Canvas View after load: " + canvasView.hashCode());
 
-                // Update ToolController's current layer
+                // Recreate ToolController or set current layer
                 if (toolController != null) {
-                    if (!imageModel.getLayers().isEmpty()) {
-                        Layer topLayer = imageModel.getLayers().get(imageModel.getLayers().size() - 1);
-                        toolController.setCurrentLayer(topLayer);
+                    // Find the "brush" layer by name
+                    Layer brushLayer = findLayerByName("brush");
+                    if (brushLayer != null) {
+                        toolController.setCurrentLayer(brushLayer);
+                        System.out.println("ToolController set to brush layer: " + brushLayer.getName() + ", Hash: " + brushLayer.hashCode());
                     }
                 } else {
-                    // If ToolController is null, create a new one
-                    if (!imageModel.getLayers().isEmpty()) {
-                        Layer topLayer = imageModel.getLayers().get(imageModel.getLayers().size() - 1);
-                        toolController = new ToolController(canvasView, topLayer);
+                    // If ToolController is null, create a new one with the "brush" layer
+                    Layer brushLayer = findLayerByName("brush");
+                    if (brushLayer != null) {
+                        toolController = new ToolController(canvasView, brushLayer);
+                        System.out.println("ToolController created with brush layer: " + brushLayer.getName() + ", Hash: " + brushLayer.hashCode());
                         brushToggle.setEnabled(true);
                         panToggle.setEnabled(true);
                         brushToggle.setSelected(true);
@@ -398,6 +415,15 @@ public class MainFrame extends JFrame {
                 revalidate();
                 repaint();
 
+                // Programmatically select the "brush" layer in LayersPanel to trigger the selection listener
+                layersPanel.setSelectedLayerByName("brush");
+
+                // Debugging Output
+                Layer currentLayer = toolController.getCurrentLayer();
+                if (currentLayer != null) {
+                    System.out.println("Current layer after load: " + currentLayer.getName() + ", Hash: " + currentLayer.hashCode());
+                }
+
                 JOptionPane.showMessageDialog(this, "Project loaded successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
             } catch (IOException | ClassNotFoundException ex) {
                 ex.printStackTrace();
@@ -406,8 +432,18 @@ public class MainFrame extends JFrame {
         }
     }
 
+    // Helper method to find a layer by name
+    private Layer findLayerByName(String layerName) {
+        for (Layer layer : imageModel.getLayers()) {
+            if (layer.getName().equalsIgnoreCase(layerName)) {
+                return layer;
+            }
+        }
+        return null;
+    }
+
     private void saveOnExit() {
-        // Automatically save the project on close
+        // Automatically save the project on close to "last_project.ser"
         File fileToSave = new File("last_project.ser");
 
         try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(fileToSave))) {
@@ -418,7 +454,6 @@ public class MainFrame extends JFrame {
             // Optionally, notify the user, but avoid blocking the shutdown
         }
     }
-
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(MainFrame::new);
