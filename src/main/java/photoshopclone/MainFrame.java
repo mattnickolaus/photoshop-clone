@@ -13,8 +13,7 @@ import photoshopclone.View.LayersPanel;
 import photoshopclone.View.AdjustmentsPanel;
 
 import java.awt.*;
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
 import java.awt.image.BufferedImage;
 
 public class MainFrame extends JFrame {
@@ -46,9 +45,27 @@ public class MainFrame extends JFrame {
         // Setup menu bar
         JMenuBar menuBar = new JMenuBar();
         JMenu fileMenu = new JMenu("File");
-        JMenuItem openMenuItem = new JMenuItem("Open Image");
-        openMenuItem.addActionListener(e -> openImage());
-        fileMenu.add(openMenuItem);
+
+        // Open Image Menu Item
+        JMenuItem openImageMenuItem = new JMenuItem("Open Image");
+        openImageMenuItem.addActionListener(e -> openImage());
+        fileMenu.add(openImageMenuItem);
+
+        // Export Image Menu Item
+        JMenuItem exportImageMenuItem = new JMenuItem("Export Image");
+        exportImageMenuItem.addActionListener(e -> exportImage());
+        fileMenu.add(exportImageMenuItem);
+
+        // Save As Menu Item
+        JMenuItem saveAsMenuItem = new JMenuItem("Save As");
+        saveAsMenuItem.addActionListener(e -> saveAs());
+        fileMenu.add(saveAsMenuItem);
+
+        // Open File Menu Item
+        JMenuItem openFileMenuItem = new JMenuItem("Open File");
+        openFileMenuItem.addActionListener(e -> openFile());
+        fileMenu.add(openFileMenuItem);
+
         menuBar.add(fileMenu);
         setJMenuBar(menuBar);
 
@@ -170,6 +187,15 @@ public class MainFrame extends JFrame {
 
         add(outerSplitPane);
 
+        // Add window listener for saving state on close
+        addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override
+            public void windowClosing(java.awt.event.WindowEvent windowEvent) {
+                // Automatically save the project on close
+                saveOnExit();
+            }
+        });
+
         setVisible(true);
     }
 
@@ -184,6 +210,7 @@ public class MainFrame extends JFrame {
 
                 if (loadedImage == null) {
                     System.err.println("Failed to load the image.");
+                    JOptionPane.showMessageDialog(this, "Failed to load the image.", "Error", JOptionPane.ERROR_MESSAGE);
                     return;
                 }
 
@@ -243,9 +270,155 @@ public class MainFrame extends JFrame {
 
             } catch (IOException | ImageReadException ex) {
                 ex.printStackTrace();
+                JOptionPane.showMessageDialog(this, "An error occurred while loading the image.", "Error", JOptionPane.ERROR_MESSAGE);
             }
         }
     }
+
+    private void exportImage() {
+        // Get the combined image from the model
+        BufferedImage combinedImage = imageModel.getCombinedImage();
+
+        if (combinedImage == null) {
+            JOptionPane.showMessageDialog(this, "No image to export.", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        // Open a file chooser dialog
+        JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setDialogTitle("Export Image");
+        fileChooser.setSelectedFile(new File("exported_image.png")); // Default filename
+
+        // Set file filter to PNG
+        fileChooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("PNG Images", "png"));
+
+        int userSelection = fileChooser.showSaveDialog(this);
+
+        if (userSelection == JFileChooser.APPROVE_OPTION) {
+            File fileToSave = fileChooser.getSelectedFile();
+
+            // Ensure the file has a .png extension
+            String path = fileToSave.getAbsolutePath();
+            if (!path.toLowerCase().endsWith(".png")) {
+                fileToSave = new File(path + ".png");
+            }
+
+            try {
+                // Write the image as PNG
+                boolean result = javax.imageio.ImageIO.write(combinedImage, "png", fileToSave);
+                if (result) {
+                    JOptionPane.showMessageDialog(this, "Image exported successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
+                } else {
+                    JOptionPane.showMessageDialog(this, "Failed to export image.", "Error", JOptionPane.ERROR_MESSAGE);
+                }
+            } catch (IOException ex) {
+                ex.printStackTrace();
+                JOptionPane.showMessageDialog(this, "An error occurred while exporting the image.", "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        }
+    }
+
+    private void saveAs() {
+        JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setDialogTitle("Save Project");
+        fileChooser.setSelectedFile(new File("project_save.ser")); // Default filename
+
+        // Set file filter to serialized files
+        fileChooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("Serialized Files", "ser"));
+
+        int userSelection = fileChooser.showSaveDialog(this);
+
+        if (userSelection == JFileChooser.APPROVE_OPTION) {
+            File fileToSave = fileChooser.getSelectedFile();
+
+            // Ensure the file has a .ser extension
+            String path = fileToSave.getAbsolutePath();
+            if (!path.toLowerCase().endsWith(".ser")) {
+                fileToSave = new File(path + ".ser");
+            }
+
+            try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(fileToSave))) {
+                oos.writeObject(imageModel);
+                JOptionPane.showMessageDialog(this, "Project saved successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
+            } catch (IOException ex) {
+                ex.printStackTrace();
+                JOptionPane.showMessageDialog(this, "An error occurred while saving the project.", "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        }
+    }
+
+    private void openFile() {
+        JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setDialogTitle("Open Project");
+        fileChooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("Serialized Files", "ser"));
+
+        int userSelection = fileChooser.showOpenDialog(this);
+
+        if (userSelection == JFileChooser.APPROVE_OPTION) {
+            File fileToOpen = fileChooser.getSelectedFile();
+
+            try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(fileToOpen))) {
+                Image loadedImageModel = (Image) ois.readObject();
+                this.imageModel = loadedImageModel;
+
+                // Update canvas view
+                canvasView.setImageModel(imageModel);
+                if (imageModel.getLoadedImage() != null) {
+                    canvasView.setPreferredSize(new Dimension(imageModel.getLoadedImage().getWidth(), imageModel.getLoadedImage().getHeight()));
+                }
+                canvasView.revalidate();
+                canvasView.repaint();
+                System.out.println("Canvas View after load: " + canvasView.hashCode());
+
+                // Update ToolController's current layer
+                if (toolController != null) {
+                    if (!imageModel.getLayers().isEmpty()) {
+                        Layer topLayer = imageModel.getLayers().get(imageModel.getLayers().size() - 1);
+                        toolController.setCurrentLayer(topLayer);
+                    }
+                } else {
+                    // If ToolController is null, create a new one
+                    if (!imageModel.getLayers().isEmpty()) {
+                        Layer topLayer = imageModel.getLayers().get(imageModel.getLayers().size() - 1);
+                        toolController = new ToolController(canvasView, topLayer);
+                        brushToggle.setEnabled(true);
+                        panToggle.setEnabled(true);
+                        brushToggle.setSelected(true);
+                        toolController.setToolMode(ToolController.ToolMode.BRUSH);
+                    }
+                }
+
+                // Recreate LayersPanel
+                LayersPanel layersPanel = new LayersPanel(imageModel, toolController);
+                adjustmentsLayersSplit.setBottomComponent(layersPanel);
+                adjustmentsLayersSplit.setDividerLocation(700); // Reset divider if necessary
+                adjustmentsLayersSplit.revalidate();
+                adjustmentsLayersSplit.repaint();
+
+                revalidate();
+                repaint();
+
+                JOptionPane.showMessageDialog(this, "Project loaded successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
+            } catch (IOException | ClassNotFoundException ex) {
+                ex.printStackTrace();
+                JOptionPane.showMessageDialog(this, "An error occurred while loading the project.", "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        }
+    }
+
+    private void saveOnExit() {
+        // Automatically save the project on close
+        File fileToSave = new File("last_project.ser");
+
+        try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(fileToSave))) {
+            oos.writeObject(imageModel);
+            System.out.println("Project automatically saved to " + fileToSave.getAbsolutePath());
+        } catch (IOException ex) {
+            ex.printStackTrace();
+            // Optionally, notify the user, but avoid blocking the shutdown
+        }
+    }
+
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(MainFrame::new);

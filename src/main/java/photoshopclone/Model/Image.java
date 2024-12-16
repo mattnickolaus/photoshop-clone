@@ -3,48 +3,35 @@ package photoshopclone.Model;
 import org.apache.commons.imaging.ImageReadException;
 import org.apache.commons.imaging.Imaging;
 
-import java.awt.*;
+import javax.imageio.ImageIO;
+import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
 import java.util.LinkedList;
 import java.util.List;
 
-public class Image {
-    private BufferedImage loadedImage;
+public class Image implements Serializable {
+    private static final long serialVersionUID = 1L;
+    private transient BufferedImage loadedImage; // Handle manually
     private List<Layer> layers;
 
     public Image() {
         layers = new LinkedList<>();
     }
 
-    /**
-     * Loads the image from a file and stores it as loadedImage.
-     * Does not create any layers by default.
-     * You can clear existing layers after loading if desired.
-     */
     public void loadImage(File file) throws IOException, ImageReadException {
         loadedImage = Imaging.getBufferedImage(file);
-        // Note: We do NOT create a base layer here.
-        // The caller (e.g., MainFrame) can decide how to use loadedImage
-        // and what layers to create.
+        // Note: The caller manages layers
     }
 
-    /**
-     * Returns the image that was last loaded.
-     */
     public BufferedImage getLoadedImage() {
         return loadedImage;
     }
 
-    /**
-     * Combines all visible layers into a single image.
-     * If no visible layers exist, returns null.
-     */
     public BufferedImage getCombinedImage() {
         if (layers.isEmpty()) return null;
 
-        // Start with the first visible non-adjustment layer as the base
+        // Start with the first visible normal layer as base
         BufferedImage base = null;
         for (Layer layer : layers) {
             if (layer.isVisible() && !(layer instanceof AdjustmentLayer)) {
@@ -60,7 +47,7 @@ public class Image {
         for (Layer layer : layers) {
             if (layer.isVisible() && !(layer instanceof AdjustmentLayer)) {
                 if (!foundBase) {
-                    foundBase = true; // The first visible normal layer is already the base
+                    foundBase = true; // First visible normal layer is already the base
                     continue;
                 }
                 g.drawImage(layer.getImage(), 0, 0, null);
@@ -91,12 +78,8 @@ public class Image {
         layers.clear();
     }
 
-    /**
-     * Creates a deep copy of this Image object, including all layers.
-     */
     public Image copy() {
         Image copy = new Image();
-        // Copy loadedImage if needed
         if (loadedImage != null) {
             copy.loadedImage = deepCopy(loadedImage);
         }
@@ -113,5 +96,34 @@ public class Image {
         g.drawImage(bi, 0, 0, null);
         g.dispose();
         return copy;
+    }
+
+    // Custom serialization for loadedImage
+    private void writeObject(ObjectOutputStream oos) throws IOException {
+        oos.defaultWriteObject();
+        // Serialize loadedImage
+        if (loadedImage != null) {
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            ImageIO.write(loadedImage, "png", baos);
+            byte[] imageBytes = baos.toByteArray();
+            oos.writeInt(imageBytes.length);
+            oos.write(imageBytes);
+        } else {
+            oos.writeInt(0);
+        }
+    }
+
+    private void readObject(ObjectInputStream ois) throws IOException, ClassNotFoundException {
+        ois.defaultReadObject();
+        // Deserialize loadedImage
+        int length = ois.readInt();
+        if (length > 0) {
+            byte[] imageBytes = new byte[length];
+            ois.readFully(imageBytes);
+            ByteArrayInputStream bais = new ByteArrayInputStream(imageBytes);
+            loadedImage = ImageIO.read(bais);
+        } else {
+            loadedImage = null;
+        }
     }
 }

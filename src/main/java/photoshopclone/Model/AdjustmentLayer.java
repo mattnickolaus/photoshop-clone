@@ -1,8 +1,15 @@
 package photoshopclone.Model;
 
-public class AdjustmentLayer extends Layer {
+import java.awt.image.BufferedImage;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.Serializable;
+
+public class AdjustmentLayer extends Layer implements Serializable {
+    private static final long serialVersionUID = 1L;
     // Adjustment parameters
-    private double brightness;  // -100 to 100, mapped to alpha/beta in brightness/contrast
+    private double brightness;  // -100 to 100
     private double contrast;    // -100 to 100
     private double saturation;  // -100 to 100
     private double vibrance;    // -100 to 100
@@ -12,19 +19,19 @@ public class AdjustmentLayer extends Layer {
 
     public AdjustmentLayer(int width, int height) {
         super(width, height);
-        // By default, no changes
         brightness = 0;
         contrast = 0;
         saturation = 0;
         vibrance = 0;
         warmth = 0;
         tint = 0;
-        sharpness = 50; // Default sharpness as no change
+        sharpness = 50; // Default sharpness
         setName("Adjustment Layer");
         setVisible(true);
     }
 
-    // Getters and setters for all parameters
+    // Getters and setters...
+
     public double getBrightness() { return brightness; }
     public void setBrightness(double brightness) { this.brightness = brightness; }
 
@@ -45,6 +52,22 @@ public class AdjustmentLayer extends Layer {
 
     public double getSharpness() { return sharpness; }
     public void setSharpness(double sharpness) { this.sharpness = sharpness; }
+
+    @Override
+    public Layer copy() {
+        AdjustmentLayer copy = new AdjustmentLayer(getImage().getWidth(), getImage().getHeight());
+        copy.setBrightness(this.brightness);
+        copy.setContrast(this.contrast);
+        copy.setSaturation(this.saturation);
+        copy.setVibrance(this.vibrance);
+        copy.setWarmth(this.warmth);
+        copy.setTint(this.tint);
+        copy.setSharpness(this.sharpness);
+        copy.setOpacity(getOpacity());
+        copy.setName(getName());
+        copy.setVisible(isVisible());
+        return copy;
+    }
 
     /**
      * Apply adjustments to the given image and return the result.
@@ -84,20 +107,5 @@ public class AdjustmentLayer extends Layer {
 
         return result;
     }
-
-    @Override
-    public Layer copy() {
-        AdjustmentLayer copy = new AdjustmentLayer(getImage().getWidth(), getImage().getHeight());
-        copy.setBrightness(this.brightness);
-        copy.setContrast(this.contrast);
-        copy.setSaturation(this.saturation);
-        copy.setVibrance(this.vibrance);
-        copy.setWarmth(this.warmth);
-        copy.setTint(this.tint);
-        copy.setSharpness(this.sharpness);
-        copy.setOpacity(getOpacity());
-        copy.setName(getName());
-        copy.setVisible(isVisible());
-        return copy;
-    }
+    // No need for additional serialization as Layer handles it
 }

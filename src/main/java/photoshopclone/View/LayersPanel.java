@@ -85,22 +85,26 @@ public class LayersPanel extends JPanel {
     private void addLayer() {
         if (imageModel.getLayers().isEmpty()) return;
 
-        Layer bottomLayer = imageModel.getLayers().get(0);
-        Layer newLayer = new Layer(bottomLayer.getImage().getWidth(), bottomLayer.getImage().getHeight(), BufferedImage.TYPE_INT_ARGB);
+        // Use ARGB so we can have transparency and draw brush strokes properly
+        Layer base = imageModel.getLayers().get(0);
+        Layer newLayer = new Layer(base.getImage().getWidth(), base.getImage().getHeight(), BufferedImage.TYPE_INT_ARGB);
 
-        // Initialize transparent
+        // Initialize as transparent
         Graphics2D g2 = newLayer.getImage().createGraphics();
         g2.setComposite(AlphaComposite.Clear);
         g2.fillRect(0, 0, newLayer.getImage().getWidth(), newLayer.getImage().getHeight());
         g2.dispose();
 
-        newLayer.setName("Layer " + (layerListModel.size() + 1));
+        // Generate a unique name
+        int layerNumber = layerListModel.getSize() + 1;
+        String uniqueName = "Layer " + layerNumber;
+        newLayer.setName(uniqueName);
         newLayer.setVisible(true);
-
-        // Add at the end of imageModel and layerListModel
         imageModel.addLayer(newLayer);
+
+        // Insert at the end of imageModel and layerListModel
         layerListModel.addElement(newLayer);
-        System.out.println("Layer added: " + newLayer.getName() + " hash: " + newLayer.hashCode());
+        System.out.println("Added new layer: " + newLayer.getName() + ", Hash: " + newLayer.hashCode());
 
         // Select the new top layer (last one)
         layerList.setSelectedIndex(layerListModel.size() - 1);

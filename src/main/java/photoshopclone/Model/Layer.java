@@ -1,10 +1,14 @@
 package photoshopclone.Model;
 
-import java.awt.image.BufferedImage;
 import java.awt.Graphics2D;
+import java.awt.image.BufferedImage;
+import java.io.*;
 
-public class Layer {
-    private BufferedImage image;
+import javax.imageio.ImageIO;
+
+public class Layer implements Serializable {
+    private static final long serialVersionUID = 1L;
+    private transient BufferedImage image; // Mark as transient to handle manually
     private float opacity;
     private String name;
     private boolean visible;
@@ -55,6 +59,11 @@ public class Layer {
         this.visible = visible;
     }
 
+    @Override
+    public String toString() {
+        return (visible ? "[V] " : "[H] ") + name;
+    }
+
     public Layer copy() {
         Layer copyLayer = new Layer(image.getWidth(), image.getHeight(), image.getType());
         Graphics2D g = copyLayer.getImage().createGraphics();
@@ -66,8 +75,26 @@ public class Layer {
         return copyLayer;
     }
 
-    @Override
-    public String toString() {
-        return (visible ? "[V] " : "[H] ") + name; // For JList display: [V] for visible, [H] for hidden
+    // Custom serialization for BufferedImage
+    private void writeObject(ObjectOutputStream oos) throws IOException {
+        oos.defaultWriteObject();
+        // Serialize the BufferedImage as a byte array in PNG format
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        ImageIO.write(image, "png", baos);
+        byte[] imageBytes = baos.toByteArray();
+        oos.writeInt(imageBytes.length);
+        oos.write(imageBytes);
+    }
+
+    private void readObject(ObjectInputStream ois) throws IOException, ClassNotFoundException {
+        ois.defaultReadObject();
+        // Deserialize the BufferedImage from the byte array
+        int length = ois.readInt();
+        if (length > 0) {
+            byte[] imageBytes = new byte[length];
+            ois.readFully(imageBytes);
+            ByteArrayInputStream bais = new ByteArrayInputStream(imageBytes);
+            image = ImageIO.read(bais);
+        }
     }
 }

@@ -1,10 +1,9 @@
 package photoshopclone.View;
 
-import photoshopclone.Model.Image;
-
 import javax.swing.*;
 import java.awt.*;
 import java.awt.image.BufferedImage;
+import photoshopclone.Model.Image;
 
 public class CanvasView extends JPanel {
     private Image imageModel;
@@ -68,5 +67,9 @@ public class CanvasView extends JPanel {
 
     public double getOffsetY() {
         return offsetY;
+    }
+
+    public void setImageModel(Image imageModel) {
+        this.imageModel = imageModel;
     }
 }
