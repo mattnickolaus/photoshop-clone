@@ -1,4 +1,134 @@
 package photoshopclone.Controller;
 
+import java.awt.Color;
+import java.awt.Graphics2D;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import javax.swing.SwingUtilities;
+
+import photoshopclone.Model.Brush;
+import photoshopclone.Model.Layer;
+import photoshopclone.View.CanvasView;
+
 public class ToolController {
+    public enum ToolMode {
+        BRUSH,
+        PAN,
+        // ZOOM could be handled separately via buttons
+    }
+
+    private Brush brush;
+    private CanvasView canvasView;
+    private Layer currentLayer;
+    private ToolMode currentMode;
+    private UndoManager undoManager;
+
+    // For pan mode: track the last mouse position
+    private int lastX, lastY;
+
+    public ToolController(CanvasView canvasView, Layer currentLayer, UndoManager undoManager) {
+        System.out.println("Toolcontroller created: " + this.hashCode());
+        this.canvasView = canvasView;
+        this.currentLayer = currentLayer;
+        this.brush = new Brush(10, Color.BLACK);
+        this.currentMode = ToolMode.BRUSH; // default
+        this.undoManager = undoManager;
+
+        MouseAdapter mouseAdapter = new MouseAdapter() {
+            boolean dragging = false;
+
+            @Override
+            public void mousePressed(MouseEvent e) {
+                if (currentMode == ToolMode.BRUSH) {
+                    // Save state before drawing starts
+                    undoManager.saveState(canvasView.getImageModel());
+
+                    int x = e.getX();
+                    int y = e.getY();
+                    System.out.println("ToolController at mouse pressed: " + ToolController.this.hashCode());
+                    System.out.println("Mouse pressed (draw) - canvasView: " + canvasView.hashCode());
+                    System.out.println("Mouse pressed (draw) - current layer: " + currentLayer + ", Hash: " + currentLayer.hashCode());
+                    brush.draw(currentLayer, screenToImageX(x), screenToImageY(y), screenToImageX(x), screenToImageY(y));
+                    canvasView.repaint();
+                    dragging = true;
+                    lastX = x;
+                    lastY = y;
+                } else if (currentMode == ToolMode.PAN) {
+                    // Record the starting point for panning
+                    lastX = e.getX();
+                    lastY = e.getY();
+                    dragging = true;
+                }
+            }
+
+            @Override
+            public void mouseDragged(MouseEvent e) {
+                if (currentMode == ToolMode.BRUSH && dragging) {
+                    int x = e.getX();
+                    int y = e.getY();
+                    brush.draw(currentLayer, screenToImageX(lastX), screenToImageY(lastY), screenToImageX(x), screenToImageY(y));
+                    canvasView.repaint();
+                    lastX = x;
+                    lastY = y;
+                } else if (currentMode == ToolMode.PAN && dragging) {
+                    // Calculate delta
+                    int x = e.getX();
+                    int y = e.getY();
+                    double dx = x - lastX;
+                    double dy = y - lastY;
+                    // Move the view
+                    canvasView.pan(dx, dy);
+                    lastX = x;
+                    lastY = y;
+                }
+            }
+
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                dragging = false;
+            }
+        };
+
+        canvasView.addMouseListener(mouseAdapter);
+        System.out.println("MouseAdapter added by ToolController: " + ToolController.this.hashCode());
+        canvasView.addMouseMotionListener(mouseAdapter);
+    }
+
+    public void setBrushColor(Color color) {
+        brush.setColor(color);
+    }
+
+    public void setToolMode(ToolMode mode) {
+        this.currentMode = mode;
+        System.out.println("Tool mode set to " + mode);
+    }
+
+    public void setCurrentLayer(Layer layer) {
+        this.currentLayer = layer;
+        System.out.println("toolController = " + this.hashCode());
+        System.out.println("Current layer set to: " + layer.getName() + " hash:" + layer.hashCode());
+    }
+
+    public Layer getCurrentLayer() {
+        return currentLayer;
+    }
+
+    public void setUndoManager(UndoManager undoManager) {
+        this.undoManager = undoManager;
+        System.out.println("UndoManager updated in ToolController: " + undoManager.hashCode());
+    }
+
+    // Convert screen coordinates to image coordinates (for brush)
+    // Since we scale and pan, we need to invert that transform:
+    private int screenToImageX(int x) {
+        double scale = canvasView.getScaleFactor();
+        double offsetX = canvasView.getOffsetX();
+        return (int) ((x - offsetX) / scale);
+    }
+
+    private int screenToImageY(int y) {
+        double scale = canvasView.getScaleFactor();
+        double offsetY = canvasView.getOffsetY();
+        return (int) ((y - offsetY) / scale);
+    }
 }

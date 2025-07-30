@@ -1,4 +1,76 @@
 package photoshopclone.View;
 
-public class CanvasView {
+import javax.swing.*;
+import java.awt.*;
+import java.awt.image.BufferedImage;
+import photoshopclone.Model.Image;
+
+public class CanvasView extends JPanel {
+    private Image imageModel;
+    private double scaleFactor = 1.0;
+    private double offsetX = 0.0;
+    private double offsetY = 0.0;
+
+    public CanvasView(Image imageModel) {
+        this.imageModel = imageModel;
+        setOpaque(true);
+        setBackground(Color.WHITE);
+    }
+
+    @Override
+    protected void paintComponent(Graphics g) {
+        super.paintComponent(g);
+        BufferedImage combinedImage = imageModel.getCombinedImage();
+        if (combinedImage != null) {
+            g.drawImage(combinedImage, (int) offsetX, (int) offsetY,
+                    (int) (combinedImage.getWidth() * scaleFactor),
+                    (int) (combinedImage.getHeight() * scaleFactor), null);
+        }
+    }
+
+    public void zoomIn() {
+        scaleFactor *= 1.1;
+        revalidate();
+        repaint();
+    }
+
+    public void zoomOut() {
+        scaleFactor /= 1.1;
+        revalidate();
+        repaint();
+    }
+
+    public void resetView() {
+        scaleFactor = 1.0;
+        offsetX = 0.0;
+        offsetY = 0.0;
+        revalidate();
+        repaint();
+    }
+
+    public void pan(double dx, double dy) {
+        offsetX += dx;
+        offsetY += dy;
+        repaint();
+    }
+
+    public double getScaleFactor() {
+        return scaleFactor;
+    }
+
+    public double getOffsetX() {
+        return offsetX;
+    }
+
+    public double getOffsetY() {
+        return offsetY;
+    }
+
+    public void setImageModel(Image imageModel) {
+        this.imageModel = imageModel;
+    }
+
+    public Image getImageModel() {
+        return imageModel;
+    }
 }
